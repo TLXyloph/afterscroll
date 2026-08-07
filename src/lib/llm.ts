@@ -19,7 +19,7 @@ function getClient(): AnthropicFoundry {
 }
 
 export async function llmComplete(
-  callType: 'extract' | 'ask',
+  callType: 'extract' | 'ask' | 'explain',
   prompt: string,
   sid: string,
 ): Promise<{ text: string; costUsd: number }> {
