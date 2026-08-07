@@ -27,7 +27,6 @@ export type SyncResult = {
 const comingSoon = [
   { name: "Instagram", mark: "IG", className: "bg-[#e9507a] text-white" },
   { name: "LinkedIn", mark: "in", className: "bg-[#0a78b5] text-white" },
-  { name: "YouTube", mark: "▶", className: "bg-[#ef4444] text-white" },
 ] as const;
 
 export default function SourceConnect({
@@ -153,6 +152,30 @@ export default function SourceConnect({
                   <XLogo size={12} />
                 </span>
                 <span>X</span>
+              </a>
+            )}
+            {connections.google ? (
+              <div
+                title="YouTube connected — liked videos sync too"
+                className="relative flex h-10 items-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[11px] font-bold"
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#ef4444] text-white">
+                  <span className="text-[10px] font-extrabold tracking-tight">▶</span>
+                </span>
+                <span>YouTube</span>
+                <Check size={12} style={{ color: "var(--success)" }} />
+              </div>
+            ) : (
+              <a
+                href="/api/connect/google"
+                title="Connect YouTube (uses your Google sign-in)"
+                className="relative flex h-10 items-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[11px] font-bold transition-all hover:-translate-y-0.5 hover:border-border-strong"
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#ef4444] text-white">
+                  <span className="text-[10px] font-extrabold tracking-tight">▶</span>
+                </span>
+                <span>YouTube</span>
+                <ArrowRight size={11} />
               </a>
             )}
             {comingSoon.map(({ name, mark, className }) => (
