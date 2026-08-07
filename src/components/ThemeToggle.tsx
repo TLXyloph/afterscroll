@@ -6,11 +6,11 @@ import { Sun, Moon } from "lucide-react";
 type Theme = "dark" | "light";
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
     const stored = localStorage.getItem("theme") as Theme | null;
-    const initial: Theme = stored ?? "dark";
+    const initial: Theme = stored ?? "light";
     const raf = requestAnimationFrame(() => {
       setTheme(initial);
       document.documentElement.dataset.theme = initial;
