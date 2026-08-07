@@ -1,0 +1,31 @@
+import dotenv from 'dotenv';
+dotenv.config({ path: ['.env.local', '.env'] });
+import snowflake from 'snowflake-sdk';
+
+const stmts = [
+  `CREATE DATABASE IF NOT EXISTS MARKED`,
+  `USE DATABASE MARKED`,
+  `CREATE SCHEMA IF NOT EXISTS PUBLIC`,
+  `USE SCHEMA PUBLIC`,
+  `CREATE TABLE IF NOT EXISTS BOOKMARKS (TWEET_ID VARCHAR PRIMARY KEY, AUTHOR VARCHAR, TEXT VARCHAR, URL VARCHAR, MEDIA_TYPE VARCHAR, SYNCED_AT TIMESTAMP_NTZ, STATUS VARCHAR)`,
+  `CREATE TABLE IF NOT EXISTS TODOS (ID VARCHAR PRIMARY KEY, TWEET_ID VARCHAR, TITLE VARCHAR, CATEGORY VARCHAR, DONE BOOLEAN DEFAULT FALSE, CREATED_AT TIMESTAMP_NTZ)`,
+  `CREATE TABLE IF NOT EXISTS EVENT_SUGGESTIONS (ID VARCHAR PRIMARY KEY, TWEET_ID VARCHAR, TITLE VARCHAR, START_TS TIMESTAMP_NTZ, DURATION_MIN NUMBER, ADDED BOOLEAN DEFAULT FALSE, CREATED_AT TIMESTAMP_NTZ)`,
+  `CREATE TABLE IF NOT EXISTS INSIGHTS (ID VARCHAR PRIMARY KEY, TWEET_ID VARCHAR, TEXT VARCHAR, CATEGORY VARCHAR, EVEROS_ID VARCHAR, CREATED_AT TIMESTAMP_NTZ)`,
+  `CREATE TABLE IF NOT EXISTS TOKEN_LEDGER (ID VARCHAR PRIMARY KEY, CALL_TYPE VARCHAR, MODEL VARCHAR, PROMPT_TOKENS NUMBER, COMPLETION_TOKENS NUMBER, COST_USD FLOAT, CREATED_AT TIMESTAMP_NTZ)`,
+];
+
+async function main() {
+  const c = snowflake.createConnection({
+    account: process.env.SNOWFLAKE_ACCOUNT!,
+    username: process.env.SNOWFLAKE_USER!,
+    password: process.env.SNOWFLAKE_PASSWORD!,
+    warehouse: process.env.SNOWFLAKE_WAREHOUSE!,
+  });
+  await new Promise((res, rej) => c.connect((e) => (e ? rej(e) : res(null))));
+  for (const sqlText of stmts) {
+    await new Promise((res, rej) => c.execute({ sqlText, complete: (e) => (e ? rej(e) : res(null)) }));
+    console.log('OK:', sqlText.slice(0, 60));
+  }
+  process.exit(0);
+}
+main().catch((e) => { console.error(e); process.exit(1); });

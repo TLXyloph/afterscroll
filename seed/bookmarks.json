@@ -1,0 +1,10 @@
+[
+  { "tweetId": "seed-001", "author": "sysdesigndaily", "text": "Hot take after our outage: always prewarm your cache before a traffic spike. Cold caches at peak = self-inflicted DDoS. Prewarm on deploy, not on first request.", "url": "https://x.com/i/status/seed-001", "mediaType": "text" },
+  { "tweetId": "seed-002", "author": "fitwithmaya", "text": "Reel: 12-min zone 2 morning routine. Try it tomorrow at 7am — no equipment, just consistency. Your future self will thank you.", "url": "https://x.com/i/status/seed-002", "mediaType": "video" },
+  { "tweetId": "seed-003", "author": "sfaihub", "text": "We're hosting an AI infra meetup next Friday 6pm at our Menlo Park office. RSVP link in bio. Lightning talks + demos.", "url": "https://x.com/i/status/seed-003", "mediaType": "text" },
+  { "tweetId": "seed-004", "author": "careercoachraj", "text": "Before every interview: write 3 stories using STAR format. Situation, Task, Action, Result. Practice them out loud once. This beats memorizing 50 leetcode patterns for behavioral rounds.", "url": "https://x.com/i/status/seed-004", "mediaType": "text" },
+  { "tweetId": "seed-005", "author": "frugalfounder", "text": "Set up an automatic transfer of 10% of every paycheck to a high-yield savings account the day it lands. You can't spend what you never see.", "url": "https://x.com/i/status/seed-005", "mediaType": "text" },
+  { "tweetId": "seed-006", "author": "devtoolsdaily", "text": "Reel: stop writing git log --oneline every time. `git config --global alias.lg \"log --oneline --graph --decorate\"` — 5 seconds now, hours saved forever.", "url": "https://x.com/i/status/seed-006", "mediaType": "video" },
+  { "tweetId": "seed-007", "author": "mindfulmaker", "text": "Sunday reset checklist: clear desk, plan top 3 for the week, 30 min walk no phone. Do it this Sunday evening.", "url": "https://x.com/i/status/seed-007", "mediaType": "text" },
+  { "tweetId": "seed-008", "author": "papersweekly", "text": "Underrated: read one research paper abstract every morning with coffee. 5 minutes a day compounds into actually knowing your field.", "url": "https://x.com/i/status/seed-008", "mediaType": "text" }
+]
