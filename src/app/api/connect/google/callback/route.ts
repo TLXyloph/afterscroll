@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { exchangeGoogleCode } from '@/lib/google';
+import { getSid } from '@/lib/session';
 
 export async function GET(req: Request) {
   const u = new URL(req.url);
@@ -8,9 +9,10 @@ export async function GET(req: Request) {
   const state = u.searchParams.get('state');
   const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
   try {
+    const sid = await getSid();
     const saved = (await cookies()).get('g_oauth')?.value;
-    if (!code || !saved || state !== saved) throw new Error('missing/mismatched oauth state');
-    await exchangeGoogleCode(code);
+    if (!sid || !code || !saved || state !== saved) throw new Error('missing session or mismatched oauth state');
+    await exchangeGoogleCode(sid, code);
     return NextResponse.redirect(`${appUrl}/dashboard`);
   } catch (err: any) {
     console.error('google oauth callback failed:', err);

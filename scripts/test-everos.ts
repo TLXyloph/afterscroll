@@ -2,16 +2,15 @@ import dotenv from 'dotenv';
 dotenv.config({ path: ['.env.local', '.env'] });
 import { storeMemory, flushMemories, searchMemories } from '../src/lib/everos';
 
+const SID = 'script-test';
+
 async function main() {
-  const id = await storeMemory(
-    'Prewarm your cache before traffic spikes. Source: https://x.com/i/status/test',
-    { category: 'coding', tweetId: 'test' },
-  );
+  const id = await storeMemory(SID, 'Prewarm your cache before traffic spikes. Source: https://x.com/i/status/test');
   console.log('stored id:', id);
-  await flushMemories();
+  await flushMemories(SID);
   for (let attempt = 1; attempt <= 5; attempt++) {
     await new Promise((r) => setTimeout(r, 6000));
-    const hits = await searchMemories('what was the tip about caches?');
+    const hits = await searchMemories(SID, 'what was the tip about caches?');
     console.log(`attempt ${attempt}:`, hits.length, 'hits');
     if (hits.length) {
       console.log(hits[0]);

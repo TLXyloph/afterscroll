@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { readTokens, saveToken, type StoredToken } from './tokens';
+import { readToken, saveToken, type StoredToken } from './tokens';
 
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -39,7 +39,7 @@ async function tokenRequest(body: URLSearchParams): Promise<StoredToken> {
   };
 }
 
-export async function exchangeGoogleCode(code: string): Promise<void> {
+export async function exchangeGoogleCode(sid: string, code: string): Promise<void> {
   const token = await tokenRequest(new URLSearchParams({
     grant_type: 'authorization_code',
     code,
@@ -47,13 +47,13 @@ export async function exchangeGoogleCode(code: string): Promise<void> {
     client_secret: process.env.GOOGLE_CLIENT_SECRET!,
     redirect_uri: googleRedirectUri(),
   }));
-  const existing = (await readTokens()).google;
+  const existing = await readToken(sid, 'google');
   if (!token.refreshToken && existing?.refreshToken) token.refreshToken = existing.refreshToken;
-  await saveToken('google', token);
+  await saveToken(sid, 'google', token);
 }
 
-export async function getGoogleAccessToken(): Promise<string | null> {
-  const { google } = await readTokens();
+export async function getGoogleAccessToken(sid: string): Promise<string | null> {
+  const google = await readToken(sid, 'google');
   if (!google) return null;
   if (Date.now() < google.expiresAt - 60_000) return google.accessToken;
   if (!google.refreshToken) return null;
@@ -64,14 +64,14 @@ export async function getGoogleAccessToken(): Promise<string | null> {
     client_secret: process.env.GOOGLE_CLIENT_SECRET!,
   }));
   if (!token.refreshToken) token.refreshToken = google.refreshToken;
-  await saveToken('google', token);
+  await saveToken(sid, 'google', token);
   return token.accessToken;
 }
 
 // startNaive is wall-clock time in America/Los_Angeles with no offset suffix;
 // Google interprets dateTime against the given timeZone
-export async function insertCalendarEvent(summary: string, startNaive: string, durationMin: number): Promise<string> {
-  const token = await getGoogleAccessToken();
+export async function insertCalendarEvent(sid: string, summary: string, startNaive: string, durationMin: number): Promise<string> {
+  const token = await getGoogleAccessToken(sid);
   if (!token) throw new Error('Google Calendar is not connected — click Connect Calendar first');
   const start = new Date(startNaive);
   const end = new Date(start.getTime() + durationMin * 60_000);

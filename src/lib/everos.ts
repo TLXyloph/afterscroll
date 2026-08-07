@@ -1,5 +1,6 @@
-const USER = 'afterscroll-live';
-const SESSION = 'bookmarks';
+function ns(sid: string): { user: string; session: string } {
+  return { user: `afterscroll-${sid}`, session: `bm-${sid}` };
+}
 
 function base(): string {
   const raw = (process.env.EVEROS_BASE_URL ?? 'https://api.evermind.ai').replace(/\/+$/, '');
@@ -19,24 +20,27 @@ async function ev(path: string, body: Record<string, unknown>) {
   return r.json();
 }
 
-export async function storeMemory(text: string, _metadata: Record<string, string>): Promise<string> {
+export async function storeMemory(sid: string, text: string): Promise<string> {
+  const { user, session } = ns(sid);
   const j = await ev('/api/v2/memory/add', {
-    session_id: SESSION,
-    messages: [{ sender_id: USER, role: 'user', timestamp: Date.now(), content: text }],
+    session_id: session,
+    messages: [{ sender_id: user, role: 'user', timestamp: Date.now(), content: text }],
   });
   return String(j?.request_id ?? '');
 }
 
 // extraction is async server-side; flush once after a batch of stores so
 // memories are searchable within the demo window
-export async function flushMemories(): Promise<void> {
-  await ev('/api/v2/memory/flush', { session_id: SESSION, user_id: USER }).catch((err) => {
+export async function flushMemories(sid: string): Promise<void> {
+  const { user, session } = ns(sid);
+  await ev('/api/v2/memory/flush', { session_id: session, user_id: user }).catch((err) => {
     console.error('everos flush failed (non-fatal):', err);
   });
 }
 
-export async function searchMemories(query: string): Promise<{ text: string; score: number }[]> {
-  const j = await ev('/api/v2/memory/search', { query, user_id: USER, top_k: 5 });
+export async function searchMemories(sid: string, query: string): Promise<{ text: string; score: number }[]> {
+  const { user } = ns(sid);
+  const j = await ev('/api/v2/memory/search', { query, user_id: user, top_k: 5 });
   const d = j?.data ?? {};
   const out: { text: string; score: number }[] = [];
   for (const e of d.episodes ?? []) {

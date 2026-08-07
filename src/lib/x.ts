@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { readTokens, saveToken, type StoredToken } from './tokens';
+import { readToken, saveToken, type StoredToken } from './tokens';
 import type { RawBookmark } from './types';
 
 const AUTH_URL = 'https://x.com/i/oauth2/authorize';
@@ -7,8 +7,12 @@ const TOKEN_URL = 'https://api.x.com/2/oauth2/token';
 const API = 'https://api.x.com/2';
 const SCOPES = 'tweet.read users.read bookmark.read offline.access';
 
+function appUrl(): string {
+  return process.env.APP_URL ?? 'http://localhost:3000';
+}
+
 export function xRedirectUri(): string {
-  return `${process.env.APP_URL ?? 'http://localhost:3000'}/api/connect/x/callback`;
+  return `${appUrl()}/api/connect/x/callback`;
 }
 
 export function buildXAuthUrl(): { url: string; verifier: string; state: string } {
@@ -43,7 +47,7 @@ async function tokenRequest(body: URLSearchParams): Promise<StoredToken> {
   };
 }
 
-export async function exchangeXCode(code: string, verifier: string): Promise<void> {
+export async function exchangeXCode(sid: string, code: string, verifier: string): Promise<void> {
   const token = await tokenRequest(new URLSearchParams({
     grant_type: 'authorization_code',
     code,
@@ -51,11 +55,11 @@ export async function exchangeXCode(code: string, verifier: string): Promise<voi
     code_verifier: verifier,
     client_id: process.env.X_CLIENT_ID!,
   }));
-  await saveToken('x', token);
+  await saveToken(sid, 'x', token);
 }
 
-export async function getXAccessToken(): Promise<string | null> {
-  const { x } = await readTokens();
+export async function getXAccessToken(sid: string): Promise<string | null> {
+  const x = await readToken(sid, 'x');
   if (!x) return null;
   if (Date.now() < x.expiresAt - 60_000) return x.accessToken;
   if (!x.refreshToken) return null;
@@ -64,12 +68,12 @@ export async function getXAccessToken(): Promise<string | null> {
     refresh_token: x.refreshToken,
     client_id: process.env.X_CLIENT_ID!,
   }));
-  await saveToken('x', token);
+  await saveToken(sid, 'x', token);
   return token.accessToken;
 }
 
-export async function fetchBookmarksFromX(): Promise<RawBookmark[]> {
-  const token = await getXAccessToken();
+export async function fetchBookmarksFromX(sid: string): Promise<RawBookmark[]> {
+  const token = await getXAccessToken(sid);
   if (!token) throw new Error('X is not connected — click Connect X first');
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -80,7 +84,7 @@ export async function fetchBookmarksFromX(): Promise<RawBookmark[]> {
   const p = new URLSearchParams({
     max_results: '50',
     expansions: 'author_id,attachments.media_keys',
-    'tweet.fields': 'attachments',
+    'tweet.fields': 'attachments,entities',
     'user.fields': 'username',
     'media.fields': 'type',
   });
@@ -91,11 +95,17 @@ export async function fetchBookmarksFromX(): Promise<RawBookmark[]> {
   const tweets: any[] = d.data ?? [];
   const users = Object.fromEntries(((d.includes?.users ?? []) as any[]).map((u) => [u.id, u.username]));
   const media: any[] = d.includes?.media ?? [];
-  return tweets.map((t) => ({
-    tweetId: String(t.id),
-    author: users[t.author_id] ?? String(t.author_id ?? 'unknown'),
-    text: t.text ?? '',
-    url: `https://x.com/i/status/${t.id}`,
-    mediaType: media.some((m) => (t.attachments?.media_keys ?? []).includes(m.media_key) && m.type === 'video') ? 'video' : 'text',
-  }));
+  return tweets.map((t) => {
+    let text: string = t.text ?? '';
+    for (const u of t.entities?.urls ?? []) {
+      if (u.url && u.expanded_url) text = text.replace(u.url, u.expanded_url);
+    }
+    return {
+      tweetId: String(t.id),
+      author: users[t.author_id] ?? String(t.author_id ?? 'unknown'),
+      text,
+      url: `https://x.com/i/status/${t.id}`,
+      mediaType: media.some((m) => (t.attachments?.media_keys ?? []).includes(m.media_key) && m.type === 'video') ? 'video' : 'text',
+    };
+  });
 }
