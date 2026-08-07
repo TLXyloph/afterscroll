@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ArrowRight,
   CalendarCheck2,
@@ -43,6 +43,34 @@ export default function SourceConnect({
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<SyncResult | null>(null);
   const [syncError, setSyncError] = useState("");
+  const linkRef = useRef<HTMLInputElement>(null);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importNote, setImportNote] = useState("");
+
+  const importLink = async () => {
+    if (!linkUrl.trim() || importing) return;
+    setImporting(true);
+    setImportNote("");
+    try {
+      const r = await api<SyncResult>("/api/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: linkUrl.trim() }),
+      });
+      setImportNote(
+        r.synced === 0
+          ? "Already in your memory."
+          : `Kept ${r.todos} todos, ${r.events} events, ${r.insights} insights from that link.`,
+      );
+      setLinkUrl("");
+      if (r.synced > 0) onSynced?.(r);
+    } catch (err) {
+      setImportNote(err instanceof Error ? err.message : "Couldn't read that link — try another.");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const xConnected = connections.x;
 
@@ -182,10 +210,10 @@ export default function SourceConnect({
               <button
                 key={name}
                 type="button"
-                disabled
-                title={`${name} is coming soon`}
-                aria-label={`${name} coming soon`}
-                className="relative flex h-10 cursor-not-allowed items-center gap-2 rounded-lg border border-border bg-card-muted px-2.5 text-[11px] font-bold text-muted opacity-65"
+                onClick={() => linkRef.current?.focus()}
+                title={`Paste a ${name} link below — Scout reads the page`}
+                aria-label={`Import a ${name} link`}
+                className="relative flex h-10 items-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[11px] font-bold transition-all hover:-translate-y-0.5 hover:border-border-strong"
               >
                 <span
                   className={`flex h-6 w-6 items-center justify-center rounded-md ${className}`}
@@ -198,6 +226,31 @@ export default function SourceConnect({
               </button>
             ))}
           </div>
+
+          <div className="mt-4 flex items-center gap-2">
+            <input
+              ref={linkRef}
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void importLink();
+              }}
+              placeholder="Or paste any link — Instagram, LinkedIn, an article…"
+              className="h-10 w-full max-w-sm rounded-lg border border-border bg-card px-3 text-[12px] font-medium outline-none transition-colors placeholder:text-muted-soft focus:border-primary"
+            />
+            <button
+              type="button"
+              onClick={() => void importLink()}
+              disabled={importing || !linkUrl.trim()}
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-card-muted px-3.5 text-[12px] font-bold text-muted transition-colors hover:bg-primary-50 hover:text-primary disabled:cursor-wait disabled:opacity-60"
+            >
+              {importing ? <LoaderCircle size={13} className="animate-spin" /> : <ArrowRight size={13} />}
+              {importing ? "Reading…" : "Import"}
+            </button>
+          </div>
+          {importNote && (
+            <p className="mt-2 text-[11px] font-semibold text-muted">{importNote}</p>
+          )}
 
           <div className="mt-6 flex items-center gap-3">
             {xConnected ? (
