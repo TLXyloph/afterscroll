@@ -357,7 +357,7 @@ export default function AskAfterScroll() {
                       key={card.title}
                       type="button"
                       onClick={() => void sendQuestion(prompt.query)}
-                      className="group relative min-h-[148px] overflow-hidden rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg"
+                      className="group relative flex min-h-[148px] flex-col overflow-hidden rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg"
                     >
                       <span
                         className="pointer-events-none absolute inset-0 opacity-60"
@@ -371,7 +371,7 @@ export default function AskAfterScroll() {
                       >
                         <Icon size={17} strokeWidth={2.2} />
                       </span>
-                      <span className="absolute inset-x-4 bottom-4">
+                      <span className="relative mt-auto block pt-3">
                         <span className="block text-[9px] font-bold uppercase tracking-[0.08em] text-muted">
                           {prompt.label}
                         </span>

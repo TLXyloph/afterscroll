@@ -3,6 +3,7 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { sq } from '@/lib/snowflake';
 import { fetchBookmarksFromX } from '@/lib/x';
+import { fetchLikedVideos } from '@/lib/google';
 import { extractFromBookmark } from '@/lib/extract';
 import { storeMemory, flushMemories } from '@/lib/everos';
 import { getSid } from '@/lib/session';
@@ -14,7 +15,14 @@ async function fetchBookmarks(sid: string): Promise<RawBookmark[]> {
   if (process.env.SEED_MODE === 'true') {
     return JSON.parse(await readFile(path.join(process.cwd(), 'seed', 'bookmarks.json'), 'utf8'));
   }
-  return fetchBookmarksFromX(sid);
+  const [x, yt] = await Promise.all([
+    fetchBookmarksFromX(sid),
+    fetchLikedVideos(sid).catch((err) => {
+      console.error('youtube fetch skipped:', err?.message);
+      return [];
+    }),
+  ]);
+  return [...x, ...yt];
 }
 
 export async function POST() {

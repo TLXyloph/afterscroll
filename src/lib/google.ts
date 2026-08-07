@@ -4,7 +4,7 @@ import { readToken, saveToken, type StoredToken } from './tokens';
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const CAL_API = 'https://www.googleapis.com/calendar/v3';
-const SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+const SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/youtube.readonly';
 
 export function googleRedirectUri(): string {
   return `${process.env.APP_URL ?? 'http://localhost:3000'}/api/connect/google/callback`;
@@ -90,4 +90,23 @@ export async function insertCalendarEvent(sid: string, summary: string, startNai
   if (!r.ok) throw new Error(`Google Calendar insert → ${r.status}: ${await r.text()}`);
   const j = await r.json();
   return j.htmlLink ?? '';
+}
+
+// user's recently liked YouTube videos, mapped into the same pipeline shape
+export async function fetchLikedVideos(sid: string): Promise<import('./types').RawBookmark[]> {
+  const token = await getGoogleAccessToken(sid);
+  if (!token) return [];
+  const p = new URLSearchParams({ part: 'snippet', myRating: 'like', maxResults: '10' });
+  const r = await fetch(`https://www.googleapis.com/youtube/v3/videos?${p.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) throw new Error(`YouTube liked videos → ${r.status}: ${await r.text()}`);
+  const j = await r.json();
+  return (j.items ?? []).map((v: any) => ({
+    tweetId: `yt-${v.id}`,
+    author: v.snippet?.channelTitle ?? 'YouTube',
+    text: `${v.snippet?.title ?? ''}. ${(v.snippet?.description ?? '').slice(0, 500)}`,
+    url: `https://www.youtube.com/watch?v=${v.id}`,
+    mediaType: 'video' as const,
+  }));
 }
