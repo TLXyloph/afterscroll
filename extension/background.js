@@ -152,7 +152,8 @@ async function postCapture(payload, { skipDedupe = false } = {}) {
 // Message routing
 // ---------------------------------------------------------------------
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (sender.id !== chrome.runtime.id) return; // only our own content script
   if (!message || typeof message.type !== 'string') return false;
 
   if (message.type === 'afterscroll-capture') {

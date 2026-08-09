@@ -27,7 +27,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     await q(`UPDATE EVENT_SUGGESTIONS SET ADDED = 1 WHERE ID = ? AND ACCOUNT_ID = ?`, [id, accountId]);
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error('calendar add failed:', err);
-    return NextResponse.json({ error: err?.message ?? 'calendar add failed' }, { status: 500 });
+    console.error('calendar add failed:', err?.message);
+    return NextResponse.json({ error: 'could not add to calendar' }, { status: 500 });
   }
 }

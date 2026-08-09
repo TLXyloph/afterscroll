@@ -2,6 +2,18 @@ import type { Tint, ActionTone } from "./data";
 import type { Category } from "./types";
 
 // Live backend categories mapped onto the design's tint tokens
+// render-time protocol allowlist so no future ingestion path can turn a stored
+// sourceUrl into a javascript:/data: click-XSS
+export function safeHref(url: string | null | undefined): string {
+  if (!url) return "#";
+  try {
+    const u = new URL(url);
+    return /^https?:$/.test(u.protocol) ? u.href : "#";
+  } catch {
+    return "#";
+  }
+}
+
 export const categoryTint: Record<
   Category,
   { background: string; color: string }

@@ -1,13 +1,24 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { getStripe } from '@/lib/billing';
+import { assertRateLimit, isGuardrailError, clientIp, RATE_LIMITS } from '@/lib/guardrails';
+
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
 
 // Admin-only promo code minting, guarded by the x-admin-key header.
 // Body: { code?, percentOff? (default 100), maxRedemptions?, durationInMonths? }
 export async function POST(req: Request) {
   try {
+    // throttle guess attempts by source IP before touching the key
+    await assertRateLimit(clientIp(req), 'admin-promo', RATE_LIMITS.adminPromo);
     const adminKey = process.env.ADMIN_KEY;
-    if (!adminKey) return NextResponse.json({ error: 'admin disabled' }, { status: 503 });
-    if (req.headers.get('x-admin-key') !== adminKey) {
+    if (!adminKey || adminKey.length < 24) return NextResponse.json({ error: 'admin disabled' }, { status: 503 });
+    if (!timingSafeEqualStr(req.headers.get('x-admin-key') ?? '', adminKey)) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 
@@ -40,7 +51,8 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ code: promo.code, id: promo.id });
   } catch (err: any) {
-    console.error('promo create failed:', err);
-    return NextResponse.json({ error: err?.message ?? 'promo create failed' }, { status: 500 });
+    if (isGuardrailError(err)) return NextResponse.json({ error: err.message }, { status: 429 });
+    console.error('promo create failed:', err?.message);
+    return NextResponse.json({ error: 'promo create failed' }, { status: 500 });
   }
 }

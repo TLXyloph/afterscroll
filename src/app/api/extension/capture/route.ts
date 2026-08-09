@@ -57,6 +57,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: err.message }, { status: 429 });
     }
     console.error('extension capture failed:', err);
-    return NextResponse.json({ error: err?.message ?? 'capture failed' }, { status: 500 });
+    return NextResponse.json({ error: 'capture failed' }, { status: 500 });
   }
 }

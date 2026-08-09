@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Bookmark, ChevronDown, X } from "lucide-react";
 import { api } from "@/lib/clientApi";
-import { categoryTint, categoryLabel } from "@/lib/ui";
+import { categoryTint, categoryLabel, safeHref } from "@/lib/ui";
 import type { Category, Insight } from "@/lib/types";
 import { XLogo } from "./icons";
 import { PanelHeader } from "./PanelHeader";
@@ -142,7 +142,7 @@ function IntelligenceWindow({
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <a
-            href={insight.sourceUrl}
+            href={safeHref(insight.sourceUrl)}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-[11.5px] font-bold text-white transition-opacity hover:opacity-90"

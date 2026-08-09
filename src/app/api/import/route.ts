@@ -43,6 +43,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: err.message }, { status: 429 });
     }
     console.error('import failed:', err);
-    return NextResponse.json({ error: err?.message ?? 'import failed' }, { status: 500 });
+    return NextResponse.json({ error: 'import failed' }, { status: 500 });
   }
 }

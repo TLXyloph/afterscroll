@@ -3,7 +3,9 @@
   "name": "afterscroll for LinkedIn",
   "version": "0.1.0",
   "description": "Automatically captures LinkedIn posts when you save them and ships them to your afterscroll app.",
-  "permissions": ["storage"],
+  "permissions": [
+    "storage"
+  ],
   "host_permissions": [
     "https://www.linkedin.com/*",
     "https://afterscroll.vercel.app/*",
@@ -14,8 +16,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.linkedin.com/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://www.linkedin.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],

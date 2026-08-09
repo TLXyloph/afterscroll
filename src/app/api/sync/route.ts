@@ -85,6 +85,6 @@ export async function POST() {
       return NextResponse.json({ error: err.message }, { status: 429 });
     }
     console.error('sync failed:', err);
-    return NextResponse.json({ error: err?.message ?? 'sync failed' }, { status: 500 });
+    return NextResponse.json({ error: 'sync failed' }, { status: 500 });
   }
 }

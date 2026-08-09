@@ -27,6 +27,8 @@ export const RATE_LIMITS = {
   capture: 60,
   // failed-auth probes to the extension capture endpoint, per IP
   captureAuth: 30,
+  // admin promo minting, per IP — throttles key-guessing
+  adminPromo: 20,
 } as const;
 
 // Throws BudgetExceededError if the account has spent >= the daily cap in the last 24h.
@@ -72,8 +74,14 @@ export function sanitizeUntrusted(text: string): string {
   return text.replace(/<\/?\s*untrusted_content\s*>/gi, '');
 }
 
-// First value of x-forwarded-for, or 'unknown'.
+// Trusted client IP. Prefer platform headers set by the edge (Cloudflare's
+// CF-Connecting-IP, Vercel's x-real-ip) over the client-spoofable left-most
+// x-forwarded-for hop.
 export function clientIp(req: Request): string {
+  const cf = req.headers.get('cf-connecting-ip');
+  if (cf) return cf.trim();
+  const real = req.headers.get('x-real-ip');
+  if (real) return real.trim();
   const fwd = req.headers.get('x-forwarded-for') ?? '';
   return fwd.split(',')[0].trim() || 'unknown';
 }
