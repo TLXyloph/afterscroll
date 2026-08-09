@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "afterscroll",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "afterscroll",
+      "database_id": "8a043143-ec28-448b-bf24-a1360ab20db5"
+    }
+  ],
+  "vars": {
+    "APP_URL": "http://localhost:3000",
+    "BILLING_ENFORCED": "false",
+    "SPEND_CAP_USD_PER_DAY": "2.00",
+    "GLOBAL_SPEND_CAP_USD_PER_DAY": "100.00"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

@@ -2,13 +2,25 @@ import { readFileSync } from 'fs';
 import path from 'path';
 
 // One query surface for the whole app:
-//   q<T>(sql, params) — SELECT returns rows (column names as written in schema,
-//   uppercase), everything else returns [].
+//   q<T>(sql, params) — SELECT returns rows (UPPERCASE column names per schema),
+//   everything else returns [].
 //
-// Two backends behind the same interface:
-//   - Cloudflare D1 (production): resolved per-request from the Workers binding.
-//   - better-sqlite3 (local dev / `npm run dev`): a file at .data/dev.db.
-// The SQL is identical SQLite dialect either way.
+// Two backends behind the same interface, chosen at runtime:
+//   - Cloudflare D1 (production): the Workers binding, via OpenNext context.
+//   - better-sqlite3 (local dev): a file at .data/dev.db.
+// Identical SQLite dialect either way.
+
+// Resolve the D1 binding for this request. On Node/local, getCloudflareContext
+// throws (or the module isn't a Worker context) → null → the sqlite path runs.
+// Resolved per call: the binding must be read within the active request scope.
+async function getD1(): Promise<any | null> {
+  try {
+    const mod: any = await import('@opennextjs/cloudflare');
+    return mod.getCloudflareContext?.()?.env?.DB ?? null;
+  } catch {
+    return null;
+  }
+}
 
 let sqliteDriver: { all: (s: string, p: unknown[]) => unknown[]; run: (s: string, p: unknown[]) => void } | null = null;
 
@@ -27,18 +39,6 @@ function getSqlite() {
     run: (sql, params) => { db.prepare(sql).run(...(params as [])); },
   };
   return sqliteDriver;
-}
-
-// Returns the D1 database binding when running on Cloudflare, else null.
-async function getD1(): Promise<any | null> {
-  if (!process.env.CF_D1) return null; // set by wrangler when the binding exists
-  try {
-    // dynamic import so local/Node builds never resolve the Workers-only module
-    const mod: any = await import('@opennextjs/cloudflare');
-    return mod.getCloudflareContext().env.DB ?? null;
-  } catch {
-    return null;
-  }
 }
 
 export async function q<T = Record<string, unknown>>(
