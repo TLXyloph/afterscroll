@@ -16,7 +16,7 @@
     }
   ],
   "vars": {
-    "APP_URL": "http://localhost:3000",
+    "APP_URL": "https://afterscroll.afterscroll.workers.dev",
     "BILLING_ENFORCED": "false",
     "SPEND_CAP_USD_PER_DAY": "2.00",
     "GLOBAL_SPEND_CAP_USD_PER_DAY": "100.00"

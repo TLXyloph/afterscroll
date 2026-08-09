@@ -40,7 +40,7 @@ database. Local dev is unchanged (`npm run dev` uses better-sqlite3 at
    ```
 
 6. **Set `APP_URL`** in `wrangler.toml` `[vars]` to your actual Worker URL
-   (`https://afterscroll.<your-subdomain>.workers.dev`) once you know the
+   (`https://afterscroll.afterscroll.workers.dev`) once you know the
    subdomain (visible after the first deploy).
 
 ## Deploy
@@ -56,17 +56,17 @@ The Worker URL prints on success.
 
 - **OAuth callbacks** — add these to the X and Google developer consoles
   (alongside the localhost ones), using your real Worker URL:
-  - X: `https://afterscroll.<sub>.workers.dev/api/connect/x/callback`
-  - Google: `https://afterscroll.<sub>.workers.dev/api/connect/google/callback`
+  - X: `https://afterscroll.afterscroll.workers.dev/api/connect/x/callback`
+  - Google: `https://afterscroll.afterscroll.workers.dev/api/connect/google/callback`
 - **Stripe webhook** — in the Stripe dashboard add an endpoint at
-  `https://afterscroll.<sub>.workers.dev/api/billing/webhook` for events
+  `https://afterscroll.afterscroll.workers.dev/api/billing/webhook` for events
   `customer.subscription.created|updated|deleted` and
   `checkout.session.completed`; put its signing secret in the
   `STRIPE_WEBHOOK_SECRET` wrangler secret and redeploy.
 - **Enforce billing** — flip `BILLING_ENFORCED = "true"` in `wrangler.toml`
   `[vars]` and redeploy when you're ready to require a trial/subscription.
 - **Extension** — update `extension/manifest.json` `host_permissions` to include
-  your Worker origin (`https://afterscroll.<sub>.workers.dev/*`) and set that as
+  your Worker origin (`https://afterscroll.afterscroll.workers.dev/*`) and set that as
   the App URL in the extension options.
 
 ## Security follow-ups before real users (from the audit)
