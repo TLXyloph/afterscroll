@@ -31,14 +31,25 @@ export const RATE_LIMITS = {
   adminPromo: 20,
 } as const;
 
-// Throws BudgetExceededError if the account has spent >= the daily cap in the last 24h.
+// Throws BudgetExceededError if the account has spent >= its daily cap, or if
+// the platform-wide daily spend has tripped the global circuit breaker (guards
+// against many-account cost abuse: N free identities × the per-account cap).
 export async function assertSpendAllowed(accountId: string): Promise<void> {
   const cap = Number(process.env.SPEND_CAP_USD_PER_DAY ?? '2.00');
-  const rows = await q<{ TOTAL: number | null }>(
-    `SELECT SUM(COST_USD) AS TOTAL FROM SPEND_LOG WHERE ACCOUNT_ID = ? AND CREATED_AT > datetime('now','-1 day')`,
-    [accountId],
-  );
-  if ((rows[0]?.TOTAL ?? 0) >= cap) {
+  const globalCap = Number(process.env.GLOBAL_SPEND_CAP_USD_PER_DAY ?? '100.00');
+  const [acct, global] = await Promise.all([
+    q<{ TOTAL: number | null }>(
+      `SELECT SUM(COST_USD) AS TOTAL FROM SPEND_LOG WHERE ACCOUNT_ID = ? AND CREATED_AT > datetime('now','-1 day')`,
+      [accountId],
+    ),
+    q<{ TOTAL: number | null }>(
+      `SELECT SUM(COST_USD) AS TOTAL FROM SPEND_LOG WHERE CREATED_AT > datetime('now','-1 day')`,
+    ),
+  ]);
+  if ((global[0]?.TOTAL ?? 0) >= globalCap) {
+    throw new BudgetExceededError('Service is busy — daily capacity reached, try again tomorrow');
+  }
+  if ((acct[0]?.TOTAL ?? 0) >= cap) {
     throw new BudgetExceededError('Daily AI budget reached — resets within 24h');
   }
 }
