@@ -3,6 +3,7 @@ import { q } from '@/lib/db';
 import { llmComplete } from '@/lib/llm';
 import { getAccountId } from '@/lib/session';
 import { assertRateLimit, isGuardrailError, sanitizeUntrusted, RATE_LIMITS } from '@/lib/guardrails';
+import { isPaywallError, requireEntitlement } from '@/lib/billing';
 
 export const maxDuration = 60;
 
@@ -10,6 +11,7 @@ export async function POST(req: Request) {
   try {
     const accountId = await getAccountId();
     if (!accountId) return NextResponse.json({ error: 'no session' }, { status: 401 });
+    await requireEntitlement(accountId);
     const { insightId } = await req.json();
     if (!insightId || typeof insightId !== 'string') {
       return NextResponse.json({ error: 'insightId required' }, { status: 400 });
@@ -32,6 +34,9 @@ Saved takeaway: ${sanitizeUntrusted(String(r.INSIGHT))}
       accountId);
     return NextResponse.json({ explanation: res.text.trim() });
   } catch (err: any) {
+    if (isPaywallError(err)) {
+      return NextResponse.json({ error: 'Free trial or subscription required', paywall: true }, { status: 402 });
+    }
     if (isGuardrailError(err)) {
       return NextResponse.json({ error: err.message }, { status: 429 });
     }

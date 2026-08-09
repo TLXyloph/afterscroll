@@ -6,9 +6,9 @@ import { q } from '@/lib/db';
 import { fetchBookmarksFromX } from '@/lib/x';
 import { fetchLikedVideos } from '@/lib/google';
 import { extractFromBookmark } from '@/lib/extract';
-import { storeMemory, flushMemories } from '@/lib/everos';
 import { getAccountId } from '@/lib/session';
 import { assertRateLimit, isGuardrailError, RATE_LIMITS } from '@/lib/guardrails';
+import { isPaywallError, requireEntitlement } from '@/lib/billing';
 import type { RawBookmark } from '@/lib/types';
 
 export const maxDuration = 300;
@@ -31,6 +31,7 @@ export async function POST() {
   try {
     const accountId = await getAccountId();
     if (!accountId) return NextResponse.json({ error: 'Connect X first' }, { status: 401 });
+    await requireEntitlement(accountId);
     await assertRateLimit(accountId, 'sync', RATE_LIMITS.sync);
 
     const all = await fetchBookmarks(accountId);
@@ -63,11 +64,9 @@ export async function POST() {
         events++;
       }
       for (const i of ex.parsed.insights) {
-        const everosId = await storeMemory(accountId!, `${i.text} (category: ${ex.parsed.category}) Source: ${b.url}`)
-          .catch((err) => { console.error('everos store failed', err); return ''; });
         await q(
-          `INSERT INTO INSIGHTS (ID, ACCOUNT_ID, TWEET_ID, TEXT, CATEGORY, EVEROS_ID) VALUES (?,?,?,?,?,?)`,
-          [crypto.randomUUID(), accountId, b.tweetId, i.text, ex.parsed.category, everosId],
+          `INSERT INTO INSIGHTS (ID, ACCOUNT_ID, TWEET_ID, TEXT, CATEGORY) VALUES (?,?,?,?,?)`,
+          [crypto.randomUUID(), accountId, b.tweetId, i.text, ex.parsed.category],
         );
         insights++;
       }
@@ -77,9 +76,11 @@ export async function POST() {
     for (let i = 0; i < fresh.length; i += CONCURRENCY) {
       await Promise.all(fresh.slice(i, i + CONCURRENCY).map(processBookmark));
     }
-    if (insights > 0) await flushMemories(accountId);
     return NextResponse.json({ synced: fresh.length, todos, events, insights, needsReview, costUsd });
   } catch (err: any) {
+    if (isPaywallError(err)) {
+      return NextResponse.json({ error: 'Free trial or subscription required', paywall: true }, { status: 402 });
+    }
     if (isGuardrailError(err)) {
       return NextResponse.json({ error: err.message }, { status: 429 });
     }

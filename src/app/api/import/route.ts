@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { getAccountId } from '@/lib/session';
 import { ingestBookmark } from '@/lib/ingest';
 import { assertRateLimit, isGuardrailError, RATE_LIMITS } from '@/lib/guardrails';
+import { isPaywallError, requireEntitlement } from '@/lib/billing';
 import type { RawBookmark } from '@/lib/types';
 
 export const maxDuration = 120;
@@ -11,6 +12,7 @@ export async function POST(req: Request) {
   try {
     const accountId = await getAccountId();
     if (!accountId) return NextResponse.json({ error: 'Connect a source first' }, { status: 401 });
+    await requireEntitlement(accountId);
     const { url } = await req.json();
     if (typeof url === 'string' && url.length > 2048) {
       return NextResponse.json({ error: 'URL too long (max 2048 characters)' }, { status: 400 });
@@ -34,6 +36,9 @@ export async function POST(req: Request) {
     const result = await ingestBookmark(accountId, b);
     return NextResponse.json(result);
   } catch (err: any) {
+    if (isPaywallError(err)) {
+      return NextResponse.json({ error: 'Free trial or subscription required', paywall: true }, { status: 402 });
+    }
     if (isGuardrailError(err)) {
       return NextResponse.json({ error: err.message }, { status: 429 });
     }

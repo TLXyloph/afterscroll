@@ -5,6 +5,7 @@ import { Check, KeyRound, LockKeyhole, Save, SlidersHorizontal } from "lucide-re
 import SourceConnect, { type Connections } from "./SourceConnect";
 
 import ExtensionTokenCard from "./ExtensionTokenCard";
+import BillingCard from "./BillingCard";
 
 export default function SettingsPanel({
   connections,
@@ -34,6 +35,10 @@ export default function SettingsPanel({
           Keep source setup and provider credentials in one place. Values stay in this demo session until a secure backend is connected.
         </p>
       </header>
+
+      <div className="mb-6">
+        <BillingCard />
+      </div>
 
       <div className="mb-6">
         <ExtensionTokenCard />

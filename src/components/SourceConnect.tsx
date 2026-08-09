@@ -8,10 +8,11 @@ import {
   Check,
   LoaderCircle,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { XLogo } from "./icons";
 import HomeScout from "./HomeScout";
-import { api } from "@/lib/clientApi";
+import { api, isPaywallResponse, startCheckout } from "@/lib/clientApi";
 
 export type Connections = { x: boolean; google: boolean };
 
@@ -46,6 +47,18 @@ export default function SourceConnect({
   const [linkUrl, setLinkUrl] = useState("");
   const [importing, setImporting] = useState(false);
   const [importNote, setImportNote] = useState("");
+  const [paywalled, setPaywalled] = useState(false);
+  const [startingTrial, setStartingTrial] = useState(false);
+
+  const startTrial = async () => {
+    if (startingTrial) return;
+    setStartingTrial(true);
+    try {
+      await startCheckout();
+    } catch {
+      setStartingTrial(false);
+    }
+  };
 
   const importLink = async () => {
     if (!linkUrl.trim() || importing) return;
@@ -65,7 +78,11 @@ export default function SourceConnect({
       setLinkUrl("");
       if (r.synced > 0) onSynced?.(r);
     } catch (err) {
-      setImportNote(err instanceof Error ? err.message : "Couldn't read that link — try another.");
+      if (isPaywallResponse(err)) {
+        setPaywalled(true);
+      } else {
+        setImportNote(err instanceof Error ? err.message : "Couldn't read that link — try another.");
+      }
     } finally {
       setImporting(false);
     }
@@ -82,11 +99,15 @@ export default function SourceConnect({
       setResult(r);
       onSynced?.(r);
     } catch (err) {
-      setSyncError(
-        err instanceof Error && err.message
-          ? err.message
-          : "Sync hit a snag — give it another try.",
-      );
+      if (isPaywallResponse(err)) {
+        setPaywalled(true);
+      } else {
+        setSyncError(
+          err instanceof Error && err.message
+            ? err.message
+            : "Sync hit a snag — give it another try.",
+        );
+      }
     } finally {
       setSyncing(false);
     }
@@ -304,17 +325,38 @@ export default function SourceConnect({
             </span>
           </div>
 
-          {errorNote && (
-            <p
-              className="mt-4 max-w-md rounded-lg border px-3 py-2 text-[11px] font-semibold"
-              style={{
-                borderColor: "var(--red)",
-                background: "var(--red-bg)",
-                color: "var(--red)",
-              }}
-            >
-              {errorNote}
-            </p>
+          {paywalled ? (
+            <div className="mt-4 flex max-w-md flex-wrap items-center gap-2.5 rounded-lg border border-primary bg-primary-50 px-3 py-2.5">
+              <p className="text-[11px] font-semibold text-primary">
+                Scout&apos;s AI reading is part of the plan — try it free for a week.
+              </p>
+              <button
+                type="button"
+                onClick={() => void startTrial()}
+                disabled={startingTrial}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[11px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              >
+                {startingTrial ? (
+                  <LoaderCircle size={12} className="animate-spin" />
+                ) : (
+                  <Sparkles size={12} />
+                )}
+                Start free trial
+              </button>
+            </div>
+          ) : (
+            errorNote && (
+              <p
+                className="mt-4 max-w-md rounded-lg border px-3 py-2 text-[11px] font-semibold"
+                style={{
+                  borderColor: "var(--red)",
+                  background: "var(--red-bg)",
+                  color: "var(--red)",
+                }}
+              >
+                {errorNote}
+              </p>
+            )
           )}
         </div>
 

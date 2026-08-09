@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import { q } from './db';
 import { extractFromBookmark } from './extract';
-import { storeMemory, flushMemories } from './everos';
 import type { RawBookmark } from './types';
 
 export type IngestResult = {
@@ -40,15 +39,12 @@ export async function ingestBookmark(accountId: string, b: RawBookmark): Promise
       events++;
     }
     for (const i of ex.parsed.insights) {
-      const everosId = await storeMemory(accountId, `${i.text} (category: ${ex.parsed.category}) Source: ${b.url}`)
-        .catch(() => '');
       await q(
-        `INSERT INTO INSIGHTS (ID, ACCOUNT_ID, TWEET_ID, TEXT, CATEGORY, EVEROS_ID) VALUES (?,?,?,?,?,?)`,
-        [crypto.randomUUID(), accountId, b.tweetId, i.text, ex.parsed.category, everosId],
+        `INSERT INTO INSIGHTS (ID, ACCOUNT_ID, TWEET_ID, TEXT, CATEGORY) VALUES (?,?,?,?,?)`,
+        [crypto.randomUUID(), accountId, b.tweetId, i.text, ex.parsed.category],
       );
       insights++;
     }
-    if (insights > 0) await flushMemories(accountId);
   }
   return { synced: 1, todos, events, insights, needsReview: ex.parsed ? 0 : 1 };
 }

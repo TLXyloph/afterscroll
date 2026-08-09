@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { q } from '@/lib/db';
 import { ingestBookmark } from '@/lib/ingest';
 import { assertRateLimit, isGuardrailError, clientIp, RATE_LIMITS } from '@/lib/guardrails';
+import { isPaywallError, requireEntitlement } from '@/lib/billing';
 import type { RawBookmark } from '@/lib/types';
 
 export const maxDuration = 120;
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'invalid token' }, { status: 401 });
     }
     const accountId = rows[0].ACCOUNT_ID;
+    await requireEntitlement(accountId);
     await assertRateLimit(accountId, 'capture', RATE_LIMITS.capture);
 
     const body = await req.json();
@@ -48,6 +50,9 @@ export async function POST(req: Request) {
     const result = await ingestBookmark(accountId, b);
     return NextResponse.json({ ok: true, ...result });
   } catch (err: any) {
+    if (isPaywallError(err)) {
+      return NextResponse.json({ error: 'Free trial or subscription required', paywall: true }, { status: 402 });
+    }
     if (isGuardrailError(err)) {
       return NextResponse.json({ error: err.message }, { status: 429 });
     }

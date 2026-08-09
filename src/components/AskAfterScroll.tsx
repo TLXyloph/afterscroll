@@ -14,7 +14,7 @@ import {
   VolumeX,
   type LucideIcon,
 } from "lucide-react";
-import { api } from "@/lib/clientApi";
+import { api, isPaywallResponse, startCheckout } from "@/lib/clientApi";
 
 type AskResult = {
   answer: string;
@@ -107,6 +107,18 @@ export default function AskAfterScroll() {
   const [listening, setListening] = useState(false);
   const [voiceOn, setVoiceOn] = useState(true);
   const [notice, setNotice] = useState("");
+  const [paywalled, setPaywalled] = useState(false);
+  const [startingTrial, setStartingTrial] = useState(false);
+
+  const startTrial = async () => {
+    if (startingTrial) return;
+    setStartingTrial(true);
+    try {
+      await startCheckout();
+    } catch {
+      setStartingTrial(false);
+    }
+  };
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
@@ -156,16 +168,29 @@ export default function AskAfterScroll() {
         },
       ]);
       if (voiceOn) speak(result.answer);
-    } catch {
-      setMessages((current) => [
-        ...current,
-        {
-          id: Date.now() + 1,
-          role: "assistant",
-          text: "I hit a snag reaching your memory. Give it another try in a moment.",
-        },
-      ]);
-      setNotice("Scout could not reach your memory just now.");
+    } catch (err) {
+      if (isPaywallResponse(err)) {
+        setPaywalled(true);
+        setMessages((current) => [
+          ...current,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: "Answering from your saves is part of the plan — start your free week and ask me again.",
+          },
+        ]);
+        setNotice("");
+      } else {
+        setMessages((current) => [
+          ...current,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: "I hit a snag reaching your memory. Give it another try in a moment.",
+          },
+        ]);
+        setNotice("Scout could not reach your memory just now.");
+      }
     } finally {
       setThinking(false);
     }
@@ -423,9 +448,26 @@ export default function AskAfterScroll() {
               <ArrowUp size={18} strokeWidth={2.5} />
             </button>
           </form>
-          <p className="mt-2 min-h-4 text-[10.5px] text-muted">
-            {notice || "Tap the microphone to dictate, or type a question."}
-          </p>
+          {paywalled ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2.5">
+              <span className="text-[10.5px] font-semibold text-primary">
+                Try Scout free for 7 days — $5/mo after, cancel anytime.
+              </span>
+              <button
+                type="button"
+                onClick={() => void startTrial()}
+                disabled={startingTrial}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[11px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              >
+                <Sparkles size={12} />
+                {startingTrial ? "Opening checkout…" : "Start free trial"}
+              </button>
+            </div>
+          ) : (
+            <p className="mt-2 min-h-4 text-[10.5px] text-muted">
+              {notice || "Tap the microphone to dictate, or type a question."}
+            </p>
+          )}
         </div>
       </div>
     </section>
