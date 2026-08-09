@@ -1,6 +1,7 @@
 import AnthropicFoundry from '@anthropic-ai/foundry-sdk';
 import { q } from './db';
 import { MODEL, costUsd } from './rates';
+import { assertSpendAllowed } from './guardrails';
 
 let client: AnthropicFoundry | null = null;
 let webFetchSupported = true;
@@ -23,6 +24,7 @@ export async function llmComplete(
   prompt: string,
   accountId: string,
 ): Promise<{ text: string; costUsd: number }> {
+  await assertSpendAllowed(accountId); // daily per-account budget cap — covers every call type
   const params: any = {
     model: MODEL,
     max_tokens: 4096,

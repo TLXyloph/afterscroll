@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { q } from '@/lib/db';
 import { ingestBookmark } from '@/lib/ingest';
+import { assertRateLimit, isGuardrailError, clientIp, RATE_LIMITS } from '@/lib/guardrails';
 import type { RawBookmark } from '@/lib/types';
 
 export const maxDuration = 120;
@@ -11,10 +12,18 @@ export async function POST(req: Request) {
   try {
     const auth = req.headers.get('authorization') ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-    if (!token) return NextResponse.json({ error: 'missing token' }, { status: 401 });
+    if (!token) {
+      // IP guard on failed-auth probes (throws RateLimitError → 429 below)
+      await assertRateLimit(clientIp(req), 'capture-auth', RATE_LIMITS.captureAuth);
+      return NextResponse.json({ error: 'missing token' }, { status: 401 });
+    }
     const rows = await q<{ ACCOUNT_ID: string }>(`SELECT ACCOUNT_ID FROM EXT_TOKENS WHERE TOKEN = ?`, [token]);
-    if (!rows.length) return NextResponse.json({ error: 'invalid token' }, { status: 401 });
+    if (!rows.length) {
+      await assertRateLimit(clientIp(req), 'capture-auth', RATE_LIMITS.captureAuth);
+      return NextResponse.json({ error: 'invalid token' }, { status: 401 });
+    }
     const accountId = rows[0].ACCOUNT_ID;
+    await assertRateLimit(accountId, 'capture', RATE_LIMITS.capture);
 
     const body = await req.json();
     const text = String(body?.text ?? '').slice(0, 5000).trim();
@@ -39,6 +48,9 @@ export async function POST(req: Request) {
     const result = await ingestBookmark(accountId, b);
     return NextResponse.json({ ok: true, ...result });
   } catch (err: any) {
+    if (isGuardrailError(err)) {
+      return NextResponse.json({ error: err.message }, { status: 429 });
+    }
     console.error('extension capture failed:', err);
     return NextResponse.json({ error: err?.message ?? 'capture failed' }, { status: 500 });
   }

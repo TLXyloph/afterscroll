@@ -8,6 +8,7 @@ import { fetchLikedVideos } from '@/lib/google';
 import { extractFromBookmark } from '@/lib/extract';
 import { storeMemory, flushMemories } from '@/lib/everos';
 import { getAccountId } from '@/lib/session';
+import { assertRateLimit, isGuardrailError, RATE_LIMITS } from '@/lib/guardrails';
 import type { RawBookmark } from '@/lib/types';
 
 export const maxDuration = 300;
@@ -30,6 +31,7 @@ export async function POST() {
   try {
     const accountId = await getAccountId();
     if (!accountId) return NextResponse.json({ error: 'Connect X first' }, { status: 401 });
+    await assertRateLimit(accountId, 'sync', RATE_LIMITS.sync);
 
     const all = await fetchBookmarks(accountId);
     const existing = new Set(
@@ -78,6 +80,9 @@ export async function POST() {
     if (insights > 0) await flushMemories(accountId);
     return NextResponse.json({ synced: fresh.length, todos, events, insights, needsReview, costUsd });
   } catch (err: any) {
+    if (isGuardrailError(err)) {
+      return NextResponse.json({ error: err.message }, { status: 429 });
+    }
     console.error('sync failed:', err);
     return NextResponse.json({ error: err?.message ?? 'sync failed' }, { status: 500 });
   }
