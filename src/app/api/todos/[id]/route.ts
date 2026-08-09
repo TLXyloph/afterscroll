@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { sq } from '@/lib/snowflake';
-import { getSid } from '@/lib/session';
+import { q } from '@/lib/db';
+import { getAccountId } from '@/lib/session';
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const sid = await getSid();
-  if (!sid) return NextResponse.json({ error: 'no session' }, { status: 401 });
+  const accountId = await getAccountId();
+  if (!accountId) return NextResponse.json({ error: 'no session' }, { status: 401 });
   const { done } = await req.json();
-  await sq(`UPDATE TODOS SET DONE = ? WHERE ID = ? AND USER_ID = ?`, [!!done, id, sid]);
+  await q(`UPDATE TODOS SET DONE = ? WHERE ID = ? AND ACCOUNT_ID = ?`, [!!done, id, accountId]);
   return NextResponse.json({ ok: true });
 }

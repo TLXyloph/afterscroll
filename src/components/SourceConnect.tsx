@@ -21,7 +21,6 @@ export type SyncResult = {
   events: number;
   insights: number;
   needsReview: number;
-  costUsd: number;
 };
 
 const comingSoon = [
@@ -278,7 +277,7 @@ export default function SourceConnect({
               {syncing
                 ? "Claude reads every new save — up to 30 seconds"
                 : result
-                  ? `This sync cost $${result.costUsd.toFixed(4)}`
+                  ? "Synced just now"
                   : xConnected
                     ? "Last sync brings in your newest bookmarks"
                     : "Takes less than a minute"}

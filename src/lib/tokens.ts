@@ -1,12 +1,12 @@
-import { sq } from './snowflake';
+import { q } from './db';
 
 export type StoredToken = { accessToken: string; refreshToken?: string; expiresAt: number };
 export type Service = 'x' | 'google';
 
-export async function readToken(sid: string, service: Service): Promise<StoredToken | null> {
-  const rows = await sq<any>(
-    `SELECT ACCESS_TOKEN, REFRESH_TOKEN, EXPIRES_AT FROM TOKENS WHERE SID = ? AND SERVICE = ?`,
-    [sid, service],
+export async function readToken(accountId: string, service: Service): Promise<StoredToken | null> {
+  const rows = await q<any>(
+    `SELECT ACCESS_TOKEN, REFRESH_TOKEN, EXPIRES_AT FROM TOKENS WHERE ACCOUNT_ID = ? AND SERVICE = ?`,
+    [accountId, service],
   );
   if (!rows.length) return null;
   return {
@@ -16,10 +16,10 @@ export async function readToken(sid: string, service: Service): Promise<StoredTo
   };
 }
 
-export async function saveToken(sid: string, service: Service, t: StoredToken): Promise<void> {
-  await sq(`DELETE FROM TOKENS WHERE SID = ? AND SERVICE = ?`, [sid, service]);
-  await sq(
-    `INSERT INTO TOKENS (SID, SERVICE, ACCESS_TOKEN, REFRESH_TOKEN, EXPIRES_AT) VALUES (?,?,?,?,?)`,
-    [sid, service, t.accessToken, t.refreshToken ?? null, t.expiresAt],
+export async function saveToken(accountId: string, service: Service, t: StoredToken): Promise<void> {
+  await q(
+    `INSERT INTO TOKENS (ACCOUNT_ID, SERVICE, ACCESS_TOKEN, REFRESH_TOKEN, EXPIRES_AT) VALUES (?,?,?,?,?)
+     ON CONFLICT(ACCOUNT_ID, SERVICE) DO UPDATE SET ACCESS_TOKEN = excluded.ACCESS_TOKEN, REFRESH_TOKEN = excluded.REFRESH_TOKEN, EXPIRES_AT = excluded.EXPIRES_AT`,
+    [accountId, service, t.accessToken, t.refreshToken ?? null, t.expiresAt],
   );
 }

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>afterscroll — Extension Options</title>
+  <style>
+    body {
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #1b1f24;
+      background: #f6f7f9;
+      margin: 0;
+      padding: 32px 16px;
+    }
+    main {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #e2e5ea;
+      border-radius: 12px;
+      padding: 24px;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p.hint { color: #5c6470; margin: 0 0 20px; font-size: 13px; }
+    label { display: block; font-weight: 600; margin: 16px 0 4px; }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border: 1px solid #c7cdd6;
+      border-radius: 8px;
+      font: inherit;
+    }
+    .field-hint { color: #5c6470; font-size: 12px; margin-top: 4px; }
+    .buttons { margin-top: 24px; display: flex; gap: 8px; }
+    button {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font: 600 13px/1.4 inherit;
+      cursor: pointer;
+    }
+    #save { background: #1f6f43; color: #fff; }
+    #test { background: #fff; color: #1b1f24; border-color: #c7cdd6; }
+    button:disabled { opacity: .5; cursor: default; }
+    #status {
+      margin-top: 16px;
+      min-height: 20px;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+    #status.ok { color: #1f6f43; }
+    #status.err { color: #b3261e; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>afterscroll for LinkedIn</h1>
+    <p class="hint">Save any post on LinkedIn and it lands in your afterscroll app.</p>
+
+    <label for="appUrl">App URL</label>
+    <input type="text" id="appUrl" placeholder="https://afterscroll.vercel.app" spellcheck="false">
+    <div class="field-hint">Use http://localhost:3000 when running the app locally.</div>
+
+    <label for="deviceToken">Device Token</label>
+    <input type="password" id="deviceToken" placeholder="Paste your token" spellcheck="false">
+    <div class="field-hint">Copy it from the afterscroll app: Settings &rarr; Extension token.</div>
+
+    <div class="buttons">
+      <button id="save">Save</button>
+      <button id="test">Send test capture</button>
+    </div>
+
+    <div id="status" role="status"></div>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

@@ -1,5 +1,5 @@
-function ns(sid: string): { user: string; session: string } {
-  return { user: `afterscroll-${sid}`, session: `bm-${sid}` };
+function ns(accountId: string): { user: string; session: string } {
+  return { user: `afterscroll-${accountId}`, session: `bm-${accountId}` };
 }
 
 function base(): string {
@@ -20,8 +20,8 @@ async function ev(path: string, body: Record<string, unknown>) {
   return r.json();
 }
 
-export async function storeMemory(sid: string, text: string): Promise<string> {
-  const { user, session } = ns(sid);
+export async function storeMemory(accountId: string, text: string): Promise<string> {
+  const { user, session } = ns(accountId);
   const j = await ev('/api/v2/memory/add', {
     session_id: session,
     messages: [{ sender_id: user, role: 'user', timestamp: Date.now(), content: text }],
@@ -31,15 +31,15 @@ export async function storeMemory(sid: string, text: string): Promise<string> {
 
 // extraction is async server-side; flush once after a batch of stores so
 // memories are searchable within the demo window
-export async function flushMemories(sid: string): Promise<void> {
-  const { user, session } = ns(sid);
+export async function flushMemories(accountId: string): Promise<void> {
+  const { user, session } = ns(accountId);
   await ev('/api/v2/memory/flush', { session_id: session, user_id: user }).catch((err) => {
     console.error('everos flush failed (non-fatal):', err);
   });
 }
 
-export async function searchMemories(sid: string, query: string): Promise<{ text: string; score: number }[]> {
-  const { user } = ns(sid);
+export async function searchMemories(accountId: string, query: string): Promise<{ text: string; score: number }[]> {
+  const { user } = ns(accountId);
   const j = await ev('/api/v2/memory/search', { query, user_id: user, top_k: 5 });
   const d = j?.data ?? {};
   const out: { text: string; score: number }[] = [];

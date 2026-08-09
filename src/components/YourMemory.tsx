@@ -81,7 +81,6 @@ function IntelligenceWindow({
   const tint = categoryTint[insight.category] ?? categoryTint.other;
   const [expanded, setExpanded] = useState(false);
   const [explanation, setExplanation] = useState<string | null>(null);
-  const [cost, setCost] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -92,7 +91,7 @@ function IntelligenceWindow({
     setLoading(true);
     setError("");
     try {
-      const r = await api<{ explanation: string; costUsd: number }>(
+      const r = await api<{ explanation: string }>(
         "/api/explain",
         {
           method: "POST",
@@ -101,7 +100,6 @@ function IntelligenceWindow({
         },
       );
       setExplanation(r.explanation);
-      setCost(r.costUsd);
     } catch (e: any) {
       setError(e.message ?? "Scout couldn't simplify this one — try again.");
     }
@@ -184,11 +182,6 @@ function IntelligenceWindow({
             {explanation && (
               <>
                 <p className="text-[12.5px] leading-relaxed">{explanation}</p>
-                {cost !== null && (
-                  <p className="mt-1.5 text-[10px] font-medium text-muted-soft">
-                    explained for ${cost.toFixed(4)}
-                  </p>
-                )}
               </>
             )}
           </div>

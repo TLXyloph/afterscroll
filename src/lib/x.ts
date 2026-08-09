@@ -47,7 +47,8 @@ async function tokenRequest(body: URLSearchParams): Promise<StoredToken> {
   };
 }
 
-export async function exchangeXCode(sid: string, code: string, verifier: string): Promise<void> {
+// exchanges the code and identifies the X user; caller binds identity → account
+export async function exchangeXCode(code: string, verifier: string): Promise<{ token: StoredToken; xUserId: string }> {
   const token = await tokenRequest(new URLSearchParams({
     grant_type: 'authorization_code',
     code,
@@ -55,11 +56,14 @@ export async function exchangeXCode(sid: string, code: string, verifier: string)
     code_verifier: verifier,
     client_id: process.env.X_CLIENT_ID!,
   }));
-  await saveToken(sid, 'x', token);
+  const meR = await fetch(`${API}/users/me`, { headers: { Authorization: `Bearer ${token.accessToken}` } });
+  if (!meR.ok) throw new Error(`X /users/me → ${meR.status}: ${await meR.text()}`);
+  const xUserId = String((await meR.json()).data.id);
+  return { token, xUserId };
 }
 
-export async function getXAccessToken(sid: string): Promise<string | null> {
-  const x = await readToken(sid, 'x');
+export async function getXAccessToken(accountId: string): Promise<string | null> {
+  const x = await readToken(accountId, 'x');
   if (!x) return null;
   if (Date.now() < x.expiresAt - 60_000) return x.accessToken;
   if (!x.refreshToken) return null;
@@ -68,12 +72,12 @@ export async function getXAccessToken(sid: string): Promise<string | null> {
     refresh_token: x.refreshToken,
     client_id: process.env.X_CLIENT_ID!,
   }));
-  await saveToken(sid, 'x', token);
+  await saveToken(accountId, 'x', token);
   return token.accessToken;
 }
 
-export async function fetchBookmarksFromX(sid: string): Promise<RawBookmark[]> {
-  const token = await getXAccessToken(sid);
+export async function fetchBookmarksFromX(accountId: string): Promise<RawBookmark[]> {
+  const token = await getXAccessToken(accountId);
   if (!token) throw new Error('X is not connected — click Connect X first');
   const headers = { Authorization: `Bearer ${token}` };
 

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import Sidebar, { type NavLabel } from "@/components/Sidebar";
 import YourMemory from "@/components/YourMemory";
 import AskAfterScroll from "@/components/AskAfterScroll";
-import IntelligenceEconomics from "@/components/IntelligenceEconomics";
 import ScoutInsights from "@/components/ScoutInsights";
 import SettingsPanel from "@/components/SettingsPanel";
 import SourceConnect, { type Connections } from "@/components/SourceConnect";
@@ -58,7 +57,6 @@ export default function Home() {
 
         {active === "Saved" && <YourMemory fullPage />}
         {active === "Ask" && <AskAfterScroll />}
-        {active === "Insights" && <IntelligenceEconomics />}
         {active === "Settings" && (
           <SettingsPanel
             connections={connections}

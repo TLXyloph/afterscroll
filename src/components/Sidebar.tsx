@@ -8,7 +8,6 @@ export const navItems = [
   { label: "Home", icon: Home },
   { label: "Saved", icon: Brain },
   { label: "Ask", icon: Sparkles },
-  { label: "Insights", icon: BarChart3 },
   { label: "Settings", icon: Settings2 },
 ] as const;
 

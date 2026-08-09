@@ -4,7 +4,7 @@ import { readToken, saveToken, type StoredToken } from './tokens';
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const CAL_API = 'https://www.googleapis.com/calendar/v3';
-const SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/youtube.readonly';
+const SCOPE = 'openid email https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/youtube.readonly';
 
 export function googleRedirectUri(): string {
   return `${process.env.APP_URL ?? 'http://localhost:3000'}/api/connect/google/callback`;
@@ -39,7 +39,8 @@ async function tokenRequest(body: URLSearchParams): Promise<StoredToken> {
   };
 }
 
-export async function exchangeGoogleCode(sid: string, code: string): Promise<void> {
+// exchanges the code and identifies the Google user; caller binds identity → account
+export async function exchangeGoogleCode(code: string): Promise<{ token: StoredToken; googleUserId: string }> {
   const token = await tokenRequest(new URLSearchParams({
     grant_type: 'authorization_code',
     code,
@@ -47,13 +48,22 @@ export async function exchangeGoogleCode(sid: string, code: string): Promise<voi
     client_secret: process.env.GOOGLE_CLIENT_SECRET!,
     redirect_uri: googleRedirectUri(),
   }));
-  const existing = await readToken(sid, 'google');
-  if (!token.refreshToken && existing?.refreshToken) token.refreshToken = existing.refreshToken;
-  await saveToken(sid, 'google', token);
+  const uiR = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: `Bearer ${token.accessToken}` },
+  });
+  if (!uiR.ok) throw new Error(`Google userinfo → ${uiR.status}: ${await uiR.text()}`);
+  const googleUserId = String((await uiR.json()).sub);
+  return { token, googleUserId };
 }
 
-export async function getGoogleAccessToken(sid: string): Promise<string | null> {
-  const google = await readToken(sid, 'google');
+export async function saveGoogleToken(accountId: string, token: StoredToken): Promise<void> {
+  const existing = await readToken(accountId, 'google');
+  if (!token.refreshToken && existing?.refreshToken) token.refreshToken = existing.refreshToken;
+  await saveToken(accountId, 'google', token);
+}
+
+export async function getGoogleAccessToken(accountId: string): Promise<string | null> {
+  const google = await readToken(accountId, 'google');
   if (!google) return null;
   if (Date.now() < google.expiresAt - 60_000) return google.accessToken;
   if (!google.refreshToken) return null;
@@ -64,14 +74,14 @@ export async function getGoogleAccessToken(sid: string): Promise<string | null> 
     client_secret: process.env.GOOGLE_CLIENT_SECRET!,
   }));
   if (!token.refreshToken) token.refreshToken = google.refreshToken;
-  await saveToken(sid, 'google', token);
+  await saveToken(accountId, 'google', token);
   return token.accessToken;
 }
 
 // startNaive is wall-clock time in America/Los_Angeles with no offset suffix;
 // Google interprets dateTime against the given timeZone
-export async function insertCalendarEvent(sid: string, summary: string, startNaive: string, durationMin: number): Promise<string> {
-  const token = await getGoogleAccessToken(sid);
+export async function insertCalendarEvent(accountId: string, summary: string, startNaive: string, durationMin: number): Promise<string> {
+  const token = await getGoogleAccessToken(accountId);
   if (!token) throw new Error('Google Calendar is not connected — click Connect Calendar first');
   const start = new Date(startNaive);
   const end = new Date(start.getTime() + durationMin * 60_000);
@@ -93,8 +103,8 @@ export async function insertCalendarEvent(sid: string, summary: string, startNai
 }
 
 // user's recently liked YouTube videos, mapped into the same pipeline shape
-export async function fetchLikedVideos(sid: string): Promise<import('./types').RawBookmark[]> {
-  const token = await getGoogleAccessToken(sid);
+export async function fetchLikedVideos(accountId: string): Promise<import('./types').RawBookmark[]> {
+  const token = await getGoogleAccessToken(accountId);
   if (!token) return [];
   const p = new URLSearchParams({ part: 'snippet', myRating: 'like', maxResults: '10' });
   const r = await fetch(`https://www.googleapis.com/youtube/v3/videos?${p.toString()}`, {

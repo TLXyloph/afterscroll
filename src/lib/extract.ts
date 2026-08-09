@@ -16,7 +16,7 @@ export type Extraction = z.infer<typeof ExtractionSchema>;
 
 export async function extractFromBookmark(
   b: Pick<RawBookmark, 'author' | 'text' | 'mediaType'>,
-  sid: string,
+  accountId: string,
 ): Promise<{ parsed: Extraction | null; costUsd: number }> {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
   const prompt = `You turn saved social-media posts into actions. Today is ${today}, timezone America/Los_Angeles.
@@ -30,7 +30,7 @@ Rules:
 - insights: tips/knowledge worth remembering later; one self-contained sentence each.
 - If the post contains a URL that likely holds event/date details, fetch it with web_fetch and use what you find; resolve dates precisely.
 - Empty arrays are fine. Never invent content not in the post.`;
-  const res = await llmComplete('extract', prompt, sid);
+  const res = await llmComplete('extract', prompt, accountId);
   try {
     const cleaned = res.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
     return { parsed: ExtractionSchema.parse(JSON.parse(cleaned)), costUsd: res.costUsd };

@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { sq } from '@/lib/snowflake';
-import { getSid } from '@/lib/session';
+import { q } from '@/lib/db';
+import { getAccountId } from '@/lib/session';
 
 export async function GET() {
-  const sid = await getSid();
-  if (!sid) return NextResponse.json({ todos: [] });
-  const rows = await sq<any>(
-    `SELECT ID, TWEET_ID, TITLE, CATEGORY, DONE, CREATED_AT FROM TODOS WHERE USER_ID = ? ORDER BY DONE ASC, CREATED_AT DESC`,
-    [sid],
+  const accountId = await getAccountId();
+  if (!accountId) return NextResponse.json({ todos: [] });
+  const rows = await q<any>(
+    `SELECT ID, TWEET_ID, TITLE, CATEGORY, DONE, CREATED_AT FROM TODOS WHERE ACCOUNT_ID = ? ORDER BY DONE ASC, CREATED_AT DESC`,
+    [accountId],
   );
   return NextResponse.json({
     todos: rows.map((r) => ({

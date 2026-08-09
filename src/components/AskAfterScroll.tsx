@@ -19,7 +19,6 @@ import { api } from "@/lib/clientApi";
 type AskResult = {
   answer: string;
   sources: Array<{ text: string }>;
-  costUsd: number;
 };
 
 type Message = {
@@ -27,7 +26,6 @@ type Message = {
   role: "assistant" | "user";
   text: string;
   sources?: Array<{ text: string }>;
-  costUsd?: number;
 };
 
 type SpeechResult = { transcript: string };
@@ -155,7 +153,6 @@ export default function AskAfterScroll() {
           role: "assistant",
           text: result.answer,
           sources: result.sources,
-          costUsd: result.costUsd,
         },
       ]);
       if (voiceOn) speak(result.answer);
@@ -284,11 +281,6 @@ export default function AskAfterScroll() {
                         <Volume2 size={12} />
                         Listen
                       </button>
-                      {typeof message.costUsd === "number" && (
-                        <span className="tabular text-[10px] font-semibold text-muted-soft">
-                          ${message.costUsd.toFixed(4)} this answer
-                        </span>
-                      )}
                     </div>
                   )}
                 </div>

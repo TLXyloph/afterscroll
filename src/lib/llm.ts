@@ -1,5 +1,5 @@
 import AnthropicFoundry from '@anthropic-ai/foundry-sdk';
-import { sq } from './snowflake';
+import { q } from './db';
 import { MODEL, costUsd } from './rates';
 
 let client: AnthropicFoundry | null = null;
@@ -21,7 +21,7 @@ function getClient(): AnthropicFoundry {
 export async function llmComplete(
   callType: 'extract' | 'ask' | 'explain',
   prompt: string,
-  sid: string,
+  accountId: string,
 ): Promise<{ text: string; costUsd: number }> {
   const params: any = {
     model: MODEL,
@@ -64,9 +64,10 @@ export async function llmComplete(
     .map((b: any) => b.text)
     .join('');
   const cost = costUsd(MODEL, pt, ct);
-  await sq(
-    `INSERT INTO TOKEN_LEDGER (ID, USER_ID, CALL_TYPE, MODEL, PROMPT_TOKENS, COMPLETION_TOKENS, COST_USD, CREATED_AT) VALUES (?,?,?,?,?,?,?,CURRENT_TIMESTAMP())`,
-    [crypto.randomUUID(), sid, callType, MODEL, pt, ct, cost],
+  // internal spend log — powers per-account caps, not user-facing analytics
+  await q(
+    `INSERT INTO SPEND_LOG (ID, ACCOUNT_ID, CALL_TYPE, MODEL, PROMPT_TOKENS, COMPLETION_TOKENS, COST_USD) VALUES (?,?,?,?,?,?,?)`,
+    [crypto.randomUUID(), accountId, callType, MODEL, pt, ct, cost],
   );
   return { text, costUsd: cost };
 }

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { exchangeXCode } from '@/lib/x';
-import { getSid } from '@/lib/session';
+import { saveToken } from '@/lib/tokens';
+import { getSid, bindIdentity } from '@/lib/session';
 
 export async function GET(req: Request) {
   const u = new URL(req.url);
@@ -14,7 +15,9 @@ export async function GET(req: Request) {
     if (!sid || !raw || !code) throw new Error('missing session/oauth state');
     const { verifier, state: saved } = JSON.parse(raw);
     if (state !== saved) throw new Error('state mismatch');
-    await exchangeXCode(sid, code, verifier);
+    const { token, xUserId } = await exchangeXCode(code, verifier);
+    const accountId = await bindIdentity(sid, 'x', xUserId);
+    await saveToken(accountId, 'x', token);
     return NextResponse.redirect(`${appUrl}/dashboard`);
   } catch (err: any) {
     console.error('x oauth callback failed:', err);

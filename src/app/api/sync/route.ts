@@ -1,23 +1,24 @@
 import { NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import path from 'path';
-import { sq } from '@/lib/snowflake';
+import crypto from 'crypto';
+import { q } from '@/lib/db';
 import { fetchBookmarksFromX } from '@/lib/x';
 import { fetchLikedVideos } from '@/lib/google';
 import { extractFromBookmark } from '@/lib/extract';
 import { storeMemory, flushMemories } from '@/lib/everos';
-import { getSid } from '@/lib/session';
+import { getAccountId } from '@/lib/session';
 import type { RawBookmark } from '@/lib/types';
 
 export const maxDuration = 300;
 
-async function fetchBookmarks(sid: string): Promise<RawBookmark[]> {
+async function fetchBookmarks(accountId: string): Promise<RawBookmark[]> {
   if (process.env.SEED_MODE === 'true') {
     return JSON.parse(await readFile(path.join(process.cwd(), 'seed', 'bookmarks.json'), 'utf8'));
   }
   const [x, yt] = await Promise.all([
-    fetchBookmarksFromX(sid),
-    fetchLikedVideos(sid).catch((err) => {
+    fetchBookmarksFromX(accountId),
+    fetchLikedVideos(accountId).catch((err) => {
       console.error('youtube fetch skipped:', err?.message);
       return [];
     }),
@@ -27,44 +28,44 @@ async function fetchBookmarks(sid: string): Promise<RawBookmark[]> {
 
 export async function POST() {
   try {
-    const sid = await getSid();
-    if (!sid) return NextResponse.json({ error: 'Connect X first' }, { status: 401 });
+    const accountId = await getAccountId();
+    if (!accountId) return NextResponse.json({ error: 'Connect X first' }, { status: 401 });
 
-    const all = await fetchBookmarks(sid);
+    const all = await fetchBookmarks(accountId);
     const existing = new Set(
-      (await sq<{ TWEET_ID: string }>('SELECT TWEET_ID FROM BOOKMARKS WHERE USER_ID = ?', [sid])).map((r) => r.TWEET_ID),
+      (await q<{ TWEET_ID: string }>('SELECT TWEET_ID FROM BOOKMARKS WHERE ACCOUNT_ID = ?', [accountId])).map((r) => r.TWEET_ID),
     );
     const fresh = all.filter((b) => !existing.has(b.tweetId));
     let todos = 0, events = 0, insights = 0, needsReview = 0, costUsd = 0;
 
     async function processBookmark(b: RawBookmark) {
-      const ex = await extractFromBookmark(b, sid!);
+      const ex = await extractFromBookmark(b, accountId!);
       costUsd += ex.costUsd;
-      await sq(
-        `INSERT INTO BOOKMARKS (TWEET_ID, USER_ID, AUTHOR, TEXT, URL, MEDIA_TYPE, SYNCED_AT, STATUS) VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP(),?)`,
-        [b.tweetId, sid, b.author, b.text, b.url, b.mediaType, ex.parsed ? 'extracted' : 'needs_review'],
+      await q(
+        `INSERT INTO BOOKMARKS (TWEET_ID, ACCOUNT_ID, AUTHOR, TEXT, URL, MEDIA_TYPE, STATUS) VALUES (?,?,?,?,?,?,?)`,
+        [b.tweetId, accountId, b.author, b.text, b.url, b.mediaType, ex.parsed ? 'extracted' : 'needs_review'],
       );
       if (!ex.parsed) { needsReview++; return; }
       for (const t of ex.parsed.todos) {
-        await sq(
-          `INSERT INTO TODOS (ID, USER_ID, TWEET_ID, TITLE, CATEGORY, DONE, CREATED_AT) VALUES (?,?,?,?,?,FALSE,CURRENT_TIMESTAMP())`,
-          [crypto.randomUUID(), sid, b.tweetId, t.title, ex.parsed.category],
+        await q(
+          `INSERT INTO TODOS (ID, ACCOUNT_ID, TWEET_ID, TITLE, CATEGORY, DONE) VALUES (?,?,?,?,?,0)`,
+          [crypto.randomUUID(), accountId, b.tweetId, t.title, ex.parsed.category],
         );
         todos++;
       }
       for (const e of ex.parsed.events) {
-        await sq(
-          `INSERT INTO EVENT_SUGGESTIONS (ID, USER_ID, TWEET_ID, TITLE, START_TS, DURATION_MIN, ADDED, CREATED_AT) VALUES (?,?,?,?,TRY_TO_TIMESTAMP_NTZ(?),?,FALSE,CURRENT_TIMESTAMP())`,
-          [crypto.randomUUID(), sid, b.tweetId, e.title, e.start_iso, e.duration_min],
+        await q(
+          `INSERT INTO EVENT_SUGGESTIONS (ID, ACCOUNT_ID, TWEET_ID, TITLE, START_TS, DURATION_MIN, ADDED) VALUES (?,?,?,?,?,?,0)`,
+          [crypto.randomUUID(), accountId, b.tweetId, e.title, e.start_iso, e.duration_min],
         );
         events++;
       }
       for (const i of ex.parsed.insights) {
-        const everosId = await storeMemory(sid!, `${i.text} (category: ${ex.parsed.category}) Source: ${b.url}`)
+        const everosId = await storeMemory(accountId!, `${i.text} (category: ${ex.parsed.category}) Source: ${b.url}`)
           .catch((err) => { console.error('everos store failed', err); return ''; });
-        await sq(
-          `INSERT INTO INSIGHTS (ID, USER_ID, TWEET_ID, TEXT, CATEGORY, EVEROS_ID, CREATED_AT) VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP())`,
-          [crypto.randomUUID(), sid, b.tweetId, i.text, ex.parsed.category, everosId],
+        await q(
+          `INSERT INTO INSIGHTS (ID, ACCOUNT_ID, TWEET_ID, TEXT, CATEGORY, EVEROS_ID) VALUES (?,?,?,?,?,?)`,
+          [crypto.randomUUID(), accountId, b.tweetId, i.text, ex.parsed.category, everosId],
         );
         insights++;
       }
@@ -74,7 +75,7 @@ export async function POST() {
     for (let i = 0; i < fresh.length; i += CONCURRENCY) {
       await Promise.all(fresh.slice(i, i + CONCURRENCY).map(processBookmark));
     }
-    if (insights > 0) await flushMemories(sid);
+    if (insights > 0) await flushMemories(accountId);
     return NextResponse.json({ synced: fresh.length, todos, events, insights, needsReview, costUsd });
   } catch (err: any) {
     console.error('sync failed:', err);
