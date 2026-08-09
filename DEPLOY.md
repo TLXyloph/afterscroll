@@ -16,7 +16,7 @@ database. Local dev is unchanged (`npm run dev` uses better-sqlite3 at
    ```
 
 3. **Create the D1 database** and paste the returned `database_id` into
-   `wrangler.toml` (replacing `REPLACE_WITH_D1_DATABASE_ID`):
+   `wrangler.jsonc` (replacing `REPLACE_WITH_D1_DATABASE_ID`):
    ```
    npx wrangler d1 create afterscroll
    ```
@@ -39,7 +39,7 @@ database. Local dev is unchanged (`npm run dev` uses better-sqlite3 at
    npx wrangler secret put ADMIN_KEY
    ```
 
-6. **Set `APP_URL`** in `wrangler.toml` `[vars]` to your actual Worker URL
+6. **Set `APP_URL`** in `wrangler.jsonc` `[vars]` to your actual Worker URL
    (`https://afterscroll.afterscroll.workers.dev`) once you know the
    subdomain (visible after the first deploy).
 
@@ -63,7 +63,7 @@ The Worker URL prints on success.
   `customer.subscription.created|updated|deleted` and
   `checkout.session.completed`; put its signing secret in the
   `STRIPE_WEBHOOK_SECRET` wrangler secret and redeploy.
-- **Enforce billing** — flip `BILLING_ENFORCED = "true"` in `wrangler.toml`
+- **Enforce billing** — flip `BILLING_ENFORCED = "true"` in `wrangler.jsonc`
   `[vars]` and redeploy when you're ready to require a trial/subscription.
 - **Extension** — update `extension/manifest.json` `host_permissions` to include
   your Worker origin (`https://afterscroll.afterscroll.workers.dev/*`) and set that as
