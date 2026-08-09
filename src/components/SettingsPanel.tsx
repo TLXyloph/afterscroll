@@ -4,6 +4,8 @@ import { FormEvent, useState } from "react";
 import { Check, KeyRound, LockKeyhole, Save, SlidersHorizontal } from "lucide-react";
 import SourceConnect, { type Connections } from "./SourceConnect";
 
+import ExtensionTokenCard from "./ExtensionTokenCard";
+
 export default function SettingsPanel({
   connections,
   connectError,
@@ -32,6 +34,10 @@ export default function SettingsPanel({
           Keep source setup and provider credentials in one place. Values stay in this demo session until a secure backend is connected.
         </p>
       </header>
+
+      <div className="mb-6">
+        <ExtensionTokenCard />
+      </div>
 
       <div className="space-y-8">
         <div>
